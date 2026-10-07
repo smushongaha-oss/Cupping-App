@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Experience Roastery Cupping</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f6f3;--card:#fff;--ink:#241a14;--mute:#6a6258;--line:#d9ddd6;--acc:#2f6b4f;--bad:#b3402f;--ok:#2f6b4f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15110e;--card:#1f1a16;--ink:#efe9e1;--mute:#a49a8d;--line:#3a322b;--acc:#6fbf94;--bad:#e07a68;--ok:#6fbf94}}
+:root[data-theme="dark"]{--bg:#15110e;--card:#1f1a16;--ink:#efe9e1;--mute:#a49a8d;--line:#3a322b;--acc:#6fbf94;--bad:#e07a68;--ok:#6fbf94}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:16px;margin:0 0 10px}
+nav{display:flex;gap:8px;margin-bottom:14px}
+button{touch-action:manipulation;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:6px;cursor:pointer}
+button.on,button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:3px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:7px;width:100%}
+.score{position:sticky;bottom:0;background:var(--card);border:2px solid var(--acc);border-radius:8px;padding:10px 14px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.big{font-size:42px;font-weight:600;line-height:1}.low{color:var(--bad)}.hi{color:var(--ok)}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+textarea{width:100%;height:120px;font:12px monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.chip{padding:3px 9px;font-size:12px;border-radius:14px}.cr{display:flex;flex-wrap:wrap;gap:5px;margin:3px 0 8px}.chips{margin-top:6px}.hide{display:none}.m{color:var(--mute);font-size:13px}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body><main>
+<h1>Cupping and scoring</h1>
+<nav><button id="t1" class="on">Cup a sample</button><button id="t2">Summary</button><span id="md" class="m" style="align-self:center;margin-left:auto"></span></nav>
+<div id="v1">
+<section class="card"><h2>Sample</h2><div class="g" id="s1"></div>
+<div style="margin-top:12px"><label>Photo of the cup (after water pouring)<input type="file" id="ph" accept="image/*"></label><img id="pv" class="hide" alt="Cup photo" style="max-width:180px;border-radius:6px;margin-top:8px"> <button type="button" id="px" class="hide">Remove photo</button></div>
+<p class="m">Add a cupper: <input id="nn" style="width:140px" placeholder="Name"> <button id="an">Add</button></p></section>
+<section class="card"><h2>Crust break and tasting notes</h2><div class="g" id="s2"></div></section>
+<section class="card"><h2>Questions</h2><div class="g" id="s3"></div></section>
+<section class="card"><h2>Score (0-10 each, usually 6.00-10.00)</h2><div class="g" id="s4"></div>
+<div class="g" style="margin-top:10px" id="s5"></div></section>
+<div class="score"><span class="big" id="fs">-</span><span id="gr" class="m">Fill 10 attributes or a quick score</span>
+<button class="pri" id="sv" style="margin-left:auto">Save entry</button><button id="pd" class="hide">Download PDF</button></div>
+</div>
+<div id="v2" class="hide">
+<section class="card"><h2>Samples</h2><label style="max-width:200px">Re-cup if spread is above<input id="sp" type="number" value="3" step="0.5"></label>
+<div class="wrap"><table id="st"></table></div></section>
+<section class="card"><h2>Entries</h2><div class="wrap"><table id="et"></table></div>
+<p><button id="ex">Show CSV to copy</button> <button id="cl">Clear all entries</button> <button id="up" class="hide">Upload this device's entries to shared</button></p><textarea id="csv" class="hide" readonly></textarea></section>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let store={};try{store=window.localStorage}catch(e){}
+const get=(k,d)=>{try{return JSON.parse(store.getItem(k))||d}catch(e){return d}};
+const put=(k,v)=>{try{store.setItem(k,JSON.stringify(v))}catch(e){}};
+let names=get('names',['Shawn','Ali','Emmanuel','Demilary']),loc=get('rows',[]),rows=loc,col=null;
+const B='Light,Medium-low,Medium,Medium-high,Full',A='High,Medium,Low',AC='Citric (lemon, orange, lime)|Malic (green apple, pear)|Tartaric (grape, wine-like)|Phosphoric (juicy, tropical)|Lactic (soft, creamy)|Acetic (vinegar, sharp)|Quinic (harsh, astringent)|None noticeable',T='Short,Medium,Long';
+const S1=[['date','Date','date'],['cupper','Cupper','sel:'+names],['name','Coffee name'],['code','Code'],['roast','Roast number'],['rdate','Roast date','date'],['rtemp','Roast temp','number'],['proc','Processing','sel:Natural,Washed,Honey,Anaerobic,Other'],['country','Country'],['grind','Grind setting','number'],['water','Water temp °C','number']];
+const S2=[['crust','Smell at 4 min (crust break)','fl'],['b6','6 min body','sel:'+B],['a6','6 min acidity','sel:'+A],['at6','6 min acidity type','sel:'+AC],['t6','6 min aftertaste','sel:'+T],['f6','6 min flavours','fl'],['b10','10 min body','sel:'+B],['a10','10 min acidity','sel:'+A],['at10','10 min acidity type','sel:'+AC],['t10','10 min aftertaste','sel:'+T],['f10','10 min flavours','fl']];
+const S3=[['q1','Standard or premium?','sel:Standard,Premium'],['q2','Is it smooth?'],['q3','Body: high or low? What balances it?'],['q4','Sour? What balances it?'],['q5','Classic or fruity?','sel:Classic,In between,Fruity'],['q6p','Half-kg price (OMR)','number'],['q6w','Worth the price?','sel:Yes,No,N/A']];
+const AT=['Fragrance / Aroma','Flavor','Aftertaste','Acidity','Body','Balance','Uniformity','Clean cup','Sweetness','Overall'];
+const S4=AT.map((a,i)=>['a'+i,a,'att']);
+const S5=[['taint','Cups with taint (2 pts each)','number'],['fault','Cups with fault (4 pts each)','number'],['quick','Quick score (if no attributes)','number']];
+const FL={Fruity:'Blueberry,Strawberry,Raspberry,Blackberry,Cherry,Dark grapes,Raisins,Dates,Figs,Prunes,Apple,Pear,Peach,Apricot,Orange,Lemon,Lime,Grapefruit,Mango,Pineapple,Papaya,Passion fruit,Banana,Coconut,Watermelon',Floral:'Jasmine,Rose,Bergamot,Lavender,Hibiscus,Chamomile,Black tea',Sweet:'Honey,Brown sugar,Caramel,Molasses,Maple,Vanilla,Toffee,Marshmallow','Chocolate and nuts':'Milk chocolate,Dark chocolate,Cocoa,Hazelnut,Almond,Peanut,Walnut',Spice:'Cinnamon,Clove,Cardamom,Black pepper,Nutmeg','Roast and other':'Toasted,Smoky,Tobacco,Cedar,Earthy,Cereal,Bready,Winey,Fermented,Bitter,Ashy,Papery'};
+function chips(){document.querySelectorAll('.chips').forEach(c=>{const cur=val(c.dataset.for).split(',').map(x=>x.trim()).filter(Boolean);$('[data-cnt='+c.dataset.for+']').textContent='Pick up to 4, strongest first ('+cur.length+' of 4)';if(!c.dataset.b){c.dataset.b=1;c.innerHTML=Object.entries(FL).map(([g,l])=>'<div class="m">'+g+'</div><div class="cr">'+l.split(',').map(f=>'<button type="button" class="chip'+(cur.includes(f)?' on':'')+'" data-f="'+f+'">'+f+'</button>').join('')+'</div>').join('')}c.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',cur.includes(b.dataset.f)))})}
+function fld([k,l,t]){let h;if(t=='fl')return '<div style="grid-column:1/-1"><span class="m">'+l+'</span> <span class="m" data-cnt="'+k+'"></span><input data-k="'+k+'" placeholder="Tap flavours below or type"><div class="chips" data-for="'+k+'"></div></div>';
+ if(t&&t.startsWith('sel:'))h='<select data-k="'+k+'"><option value=""></option>'+t.slice(4).split(t.includes('|')?'|':',').map(o=>'<option>'+o+'</option>').join('')+'</select>';
+ else h='<input data-k="'+k+'" type="'+(t=='att'?'number':t||'text')+'"'+(t=='att'?' min="0" max="10" step="0.25"':t=='number'?' step="any"':'')+'>';return '<label>'+l+h+'</label>'}
+function draw(){S1[1][2]='sel:'+names;$('#s1').innerHTML=S1.map(fld).join('');$('#s2').innerHTML=S2.map(fld).join('');$('#s3').innerHTML=S3.map(fld).join('');$('#s4').innerHTML=S4.map(fld).join('');$('#s5').innerHTML=S5.map(fld).join('');$('[data-k=date]').value=new Date().toISOString().slice(0,10);chips()}
+const val=k=>$('[data-k='+k+']').value;
+const grade=s=>s>=90?'Outstanding':s>=85?'Excellent':s>=80?'Very good':'Below specialty (<80)';
+function calc(){const v=AT.map((_,i)=>parseFloat(val('a'+i)));let s=null;
+ if(v.every(x=>!isNaN(x)))s=v.reduce((a,b)=>a+b,0)-(2*(+val('taint')||0)+4*(+val('fault')||0));
+ else if(val('quick')!=='')s=+val('quick');return s}
+function show(){const s=calc();$('#fs').textContent=s==null?'-':s.toFixed(2);$('#fs').className='big '+(s==null?'':s<80?'low':'hi');$('#gr').textContent=s==null?'Fill 10 attributes or a quick score':grade(s)}
+document.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.k){show();if(e.target.dataset.k[0]=='f'||e.target.dataset.k=='crust')chips()}});
+document.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const i=$('[data-k='+b.closest('.chips').dataset.for+']'),f=b.dataset.f;let c=i.value.split(',').map(x=>x.trim()).filter(Boolean);if(!c.includes(f)&&c.length>=4){$('[data-cnt='+b.closest('.chips').dataset.for+']').textContent='Maximum 4. Tap a selected flavour to remove it first.';return}c=c.includes(f)?c.filter(x=>x!=f):c.concat(f);i.value=c.join(', ');chips()});
+$('#an').onclick=()=>{const n=$('#nn').value.trim();if(n&&!names.includes(n)){names.push(n);put('names',names);const c=val('cupper');draw();$('[data-k=cupper]').value=c;$('#nn').value=''}};
+$('#sv').onclick=()=>{const s=calc();if(!val('cupper')||!val('code')||!val('roast')||s==null){alert('Choose a cupper, enter the code and roast number, and add a score.');return}
+ const r={};[...S1,...S2,...S3,...S4,...S5].forEach(f=>r[f[0]]=val(f[0]));r.score=s;r.key=r.code+'-'+r.roast;r.photo=photo;r.ts=Date.now();keep_(r);last=r;photo='';$('#ph').value='';$('#pv').classList.add('hide');$('#px').classList.add('hide');$('#pd').classList.remove('hide');
+ const keep=S1.map(f=>f[0]);[...S2,...S3,...S4,...S5].forEach(f=>{if(!keep.includes(f[0]))$('[data-k='+f[0]+']').value=''});chips();show();$('#sv').textContent='Saved. Save another';setTimeout(()=>$('#sv').textContent='Save entry',1800)};
+let last=null,photo='';
+function readPhoto(f){return new Promise(res=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,720/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);let q=.6,o=c.toDataURL('image/jpeg',q);while(o.length>180000&&q>.3){q-=.1;o=c.toDataURL('image/jpeg',q)}URL.revokeObjectURL(u);res(o)};im.onerror=()=>res('');im.src=u})}
+async function pdf(r){if(!r)return;if(!window.jspdf){alert('The PDF tool did not load. Check your connection and try again.');return}
+ const d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});let y=16;
+ const line=(t,b,z)=>{z=z||10;d.setFont('helvetica',b?'bold':'normal');d.setFontSize(z);d.splitTextToSize(String(t),180).forEach(x=>{if(y>282){d.addPage();y=16}d.text(x,15,y);y+=z*0.45+1.6})};
+ const sec=(n,fs)=>{y+=2;line(n,1,11);fs.forEach(f=>{if(r[f[0]]!==''&&r[f[0]]!=null)line(f[1]+': '+r[f[0]])})};
+ line('Cupping Report - Experience Roastery',1,15);sec('Sample',S1);if(r.photo){const im=new Image();await new Promise(z=>{im.onload=z;im.onerror=z;im.src=r.photo});if(im.width){const w=70,h=w*im.height/im.width;if(y+h>282){d.addPage();y=16}d.addImage(r.photo,'JPEG',15,y,w,h);y+=h+4}}sec('Crust break and tasting notes',S2);sec('Questions',S3);sec('Score',[...S4,...S5]);y+=3;line('FINAL SCORE: '+Number(r.score).toFixed(2)+' ('+grade(r.score)+')',1,13);
+ const name='Cupping_'+r.key+'_'+r.cupper+'_'+r.date+'.pdf';
+ try{const dl=await claude.use('downloads');if(dl){await dl.save({filename:name,data:d.output('blob')});return}}catch(e){if(e&&e.code=='declined')return}
+ alert('PDF saving is not available in this view. Open the page from the claude.ai link and try again.')}
+function keep_(r){if(col)col.add(r).catch(()=>{loc.push(r);put('rows',loc);rows=loc;alert('Shared storage failed. Saved on this device only.')});else{loc.push(r);put('rows',loc);rows=loc}}
+function del(i){const r=rows[i];if(col&&r._id)col.doc(r._id).delete();else{loc.splice(i,1);put('rows',loc);rows=loc;sum()}}
+function mode(){$('#md').textContent=col?'Shared with the team':'This device only';$('#cl').classList.toggle('hide',!!col);$('#up').classList.toggle('hide',!(col&&loc.length))}
+async function initDb(){try{if(typeof claude=='undefined')return;const d=await claude.use('db');if(!d)return;col=d.collection('entries');col.onSnapshot(sn=>{rows=sn.docs.map(x=>Object.assign({},x.data(),{_id:x.id})).sort((a,b)=>(a.ts||0)-(b.ts||0));mode();if(!$('#v2').classList.contains('hide'))sum()},()=>{col=null;rows=loc;mode()})}catch(e){}}
+function sum(){const g={};rows.forEach(r=>(g[r.key]=g[r.key]||[]).push(r));const lim=+$('#sp').value||3;
+ let h='<tr><th>Sample</th><th>Coffee</th><th>Cuppers</th><th>Average</th><th>Lowest</th><th>Highest</th><th>Spread</th><th>Grade</th><th>Check</th></tr>';
+ Object.keys(g).forEach(k=>{const sc=g[k].map(r=>r.score),mn=Math.min(...sc),mx=Math.max(...sc),av=sc.reduce((a,b)=>a+b,0)/sc.length,sp=mx-mn;
+  h+='<tr><td>'+k+'</td><td>'+(g[k][0].name||'')+'</td><td>'+g[k].map(r=>r.cupper).join(', ')+'</td><td><b class="'+(av<80?'low':'hi')+'">'+av.toFixed(2)+'</b></td><td>'+mn.toFixed(2)+'</td><td>'+mx.toFixed(2)+'</td><td>'+sp.toFixed(2)+'</td><td>'+grade(av)+'</td><td class="'+(sc.length>1&&sp>lim?'low':'')+'">'+(sc.length<2?'':sp>lim?'Re-cup / calibrate':'OK')+'</td></tr>'});
+ $('#st').innerHTML=Object.keys(g).length?h:'<tr><td class="m">No entries yet. Cup a sample and save it.</td></tr>';
+ $('#et').innerHTML='<tr><th>Date</th><th>Cupper</th><th>Sample</th><th>Score</th><th></th></tr>'+rows.map((r,i)=>'<tr><td>'+r.date+'</td><td>'+r.cupper+'</td><td>'+r.key+(r.photo?' <img src="'+r.photo+'" height="28" alt="" style="vertical-align:middle;border-radius:3px">':'')+'</td><td>'+r.score.toFixed(2)+'</td><td><button data-p="'+i+'">PDF</button> <button data-d="'+i+'">Delete</button></td></tr>').join('')}
+$('#et').onclick=e=>{if(e.target.dataset.p!==undefined)pdf(rows[+e.target.dataset.p]);const i=e.target.dataset.d;if(i!==undefined)del(+i)};
+$('#sp').oninput=sum;
+$('#cl').onclick=()=>{if(confirm('Delete all saved entries?')){loc=[];put('rows',loc);if(!col){rows=loc;sum()}}};
+$('#ex').onclick=()=>{const ks=[...S1,...S2,...S3,...S4,...S5].map(f=>f[0]).concat('score'),q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+ const t=$('#csv');t.value=[ks.join(',')].concat(rows.map(r=>ks.map(k=>q(r[k])).join(','))).join('\n');t.classList.remove('hide');t.select()};
+const tab=n=>{$('#v1').classList.toggle('hide',n!=1);$('#v2').classList.toggle('hide',n!=2);$('#t1').className=n==1?'on':'';$('#t2').className=n==2?'on':'';if(n==2)sum()};
+$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
+$('#up').onclick=()=>{loc.forEach(r=>col.add(r));loc=[];put('rows',loc);mode()};
+$('#ph').onchange=async e=>{const f=e.target.files[0];if(!f)return;photo=await readPhoto(f);if(photo){$('#pv').src=photo;$('#pv').classList.remove('hide');$('#px').classList.remove('hide')}else alert('Could not read that photo. Try another one.')};
+$('#px').onclick=()=>{photo='';$('#ph').value='';$('#pv').classList.add('hide');$('#px').classList.add('hide')};
+$('#pd').onclick=()=>pdf(last);
+draw();show();mode();initDb();
+</script></main></body></html>
